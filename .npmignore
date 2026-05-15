@@ -1,0 +1,32 @@
+# Development files
+.git/
+.github/
+.gitignore
+.dock erignore
+
+# Source code (only dist is needed)
+src/
+tsconfig.json
+
+# Tests
+*.test.ts
+*.spec.ts
+tests/
+__tests__/
+coverage/
+
+# Docs
+CONTRIBUTING.md
+DOCKERHUB.md
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env*
+config.json
+config.example.json
+
+# OS
+.DS_Store

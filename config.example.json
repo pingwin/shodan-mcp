@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "shodan": {
+      "command": "npx",
+      "args": ["-y", "shodan-mcp"],
+      "env": {
+        "SHODAN_API_KEY": "your-shodan-api-key-here"
+      }
+    }
+  }
+}

@@ -16,16 +16,14 @@ interface Tool {
 
 export const ORGANIZATION_LOOKUP_TOOL: Tool = {
   name: 'organization_lookup',
-  description: `Look up organization information by name.
+  description: `Look up an organization by name and list its hosts.
 
-Returns organization details including:
-- ASN number
-- CIDR ranges
-- Number of hosts
-- Sample host IPs
-- Organization domain
+Uses Shodan's 'org:' search filter, so it returns the total number of hosts
+the organization operates plus a sample of matching hosts (each with ASN,
+IP, hostnames, location, etc.).
 
-Use this tool to find all hosts belonging to a specific organization.`,
+Use this tool to find how many hosts belong to a specific organization and
+see examples of them.`,
   inputSchema: z.object({
     orgName: z.string()
       .min(1)
@@ -35,15 +33,13 @@ Use this tool to find all hosts belonging to a specific organization.`,
 
 export const NETWORK_LOOKUP_TOOL: Tool = {
   name: 'network_lookup',
-  description: `Look up network information by CIDR block.
+  description: `Look up a network by CIDR block and list its hosts.
 
-Returns details about a specific network range including:
-- ASN information
-- Organization details
-- IP range boundaries
-- Number of hosts in the network
+Uses Shodan's 'net:' search filter, so it returns the total number of hosts
+in the network range plus a sample of matching hosts (each with ASN,
+organization, IP, hostnames, location, etc.).
 
-Example CIDRs: '192.168.1.0/24', '8.8.8.0/24'`,
+Example CIDRs: '8.8.8.0/24', '192.168.1.0/24'.`,
   inputSchema: z.object({
     cidr: z.string()
       .describe('CIDR block to look up (e.g., "192.168.1.0/24")'),
@@ -70,16 +66,13 @@ Useful for understanding the attack surface of a domain.`,
 
 export const ISP_LOOKUP_TOOL: Tool = {
   name: 'isp_lookup',
-  description: `Look up ASN (Autonomous System Number) information.
+  description: `Look up an ASN (Autonomous System Number) and list its hosts.
 
-Returns details about an ASN including:
-- ASN number
-- ISP/organization name
-- CIDR ranges
-- Number of hosts
-- Sample host IPs
+Uses Shodan's 'asn:' search filter, so it returns the total number of hosts
+in the ASN plus a sample of matching hosts (each with ISP/organization, IP,
+hostnames, location, etc.).
 
-You can provide the ASN with or without the 'AS' prefix (e.g., '15169' or 'AS15169').`,
+You can provide the ASN with or without the 'AS' prefix (e.g. '15169' or 'AS15169').`,
   inputSchema: z.object({
     asn: z.string()
       .min(1)
@@ -91,7 +84,7 @@ export async function organizationLookup(
   client: ShodanClient,
   args: { orgName: string }
 ): Promise<{ content: unknown[] }> {
-  const data = await client.request<unknown>(`/org/${encodeURIComponent(args.orgName)}/json`);
+  const data = await client.organizationLookup(args.orgName);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };
@@ -101,7 +94,7 @@ export async function networkLookup(
   client: ShodanClient,
   args: { cidr: string }
 ): Promise<{ content: unknown[] }> {
-  const data = await client.request<unknown>(`/org/${encodeURIComponent(args.cidr)}/json`);
+  const data = await client.networkLookup(args.cidr);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };
@@ -111,8 +104,7 @@ export async function domainLookup(
   client: ShodanClient,
   args: { domain: string }
 ): Promise<{ content: unknown[] }> {
-  // Current Shodan API: domain intelligence moved to /dns/domain/<domain>.
-  const data = await client.request<unknown>(`/dns/domain/${encodeURIComponent(args.domain)}`);
+  const data = await client.domainLookup(args.domain);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };
@@ -122,9 +114,7 @@ export async function ispLookup(
   client: ShodanClient,
   args: { asn: string }
 ): Promise<{ content: unknown[] }> {
-  // Normalize to the canonical AS-prefixed form (accept "15169" or "AS15169").
-  const asnFormatted = `AS${args.asn.toUpperCase().replace(/^AS/, '')}`;
-  const data = await client.request<unknown>(`/org/${asnFormatted}/json`);
+  const data = await client.ispLookup(args.asn);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };

@@ -49,9 +49,7 @@ export async function dnsResolve(
   client: ShodanClient,
   args: { hostname: string }
 ): Promise<{ content: unknown[] }> {
-  const data = await client.request<unknown>(
-    `/dns/resolve/${encodeURIComponent(args.hostname)}/json`
-  );
+  const data = await client.dnsResolve(args.hostname);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };
@@ -61,9 +59,7 @@ export async function dnsReverse(
   client: ShodanClient,
   args: { ip: string }
 ): Promise<{ content: unknown[] }> {
-  const data = await client.request<unknown>(
-    `/dns/reverse/${args.ip}/json`
-  );
+  const data = await client.dnsReverse(args.ip);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };

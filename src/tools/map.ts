@@ -18,16 +18,16 @@ export const MAP_SEARCH_TOOL: Tool = {
   name: 'map_search',
   description: `Search for hosts within a geospatial bounding box.
 
-Returns hosts located within the specified latitude/longitude bounds.
-This is useful for finding devices in specific geographic areas.
+Uses Shodan's 'geo:' search filter, so it returns the total count of matching
+hosts plus a sample of them (each with its geolocation data).
 
-Provides:
-- Total count of matching hosts
-- Sample of matching hosts with their geolocation data
+Define a bounding box by specifying any two opposite corners; they are
+normalized to the correct order automatically:
+- lat1, lon1: one corner
+- lat2, lon2: the opposite corner
 
-Define a bounding box by specifying the northwest and southeast corners:
-- lat1, lon1: Northwest corner (higher latitude, lower longitude)
-- lat2, lon2: Southeast corner (lower latitude, higher longitude)
+Note: Shodan's geolocation is coarse (often city-level), so counts for small
+boxes can be larger than expected.
 
 Example: Search for hosts in New York City area:
   lat1: 40.9176 (north), lon1: -74.2591 (west)
@@ -61,10 +61,7 @@ export async function mapSearch(
   client: ShodanClient,
   args: { lat1: number; lon1: number; lat2: number; lon2: number; limit: number }
 ): Promise<{ content: unknown[] }> {
-  const data = await client.request<unknown>('/shodan/map/search', {
-    bounds: `${args.lat1},${args.lon1},${args.lat2},${args.lon2}`,
-    limit: args.limit,
-  });
+  const data = await client.mapSearch(args.lat1, args.lon1, args.lat2, args.lon2, args.limit);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };

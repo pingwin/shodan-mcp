@@ -74,10 +74,12 @@ export async function shodanSearch(
   client: ShodanClient,
   args: { query: string; limit: number; page: number }
 ): Promise<{ content: unknown[] }> {
-  const data = await client.request<unknown>('/shodan/search', {
+  // Current Shodan API: /shodan/host/search. Pagination is either `page` OR
+  // `offset`+`limit` (never both), so we derive offset from the requested page.
+  const data = await client.request<unknown>('/shodan/host/search', {
     query: args.query.replace(/\s+/g, '|'),
     limit: args.limit,
-    page: args.page,
+    offset: (args.page - 1) * args.limit,
   });
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -88,7 +90,8 @@ export async function searchStats(
   client: ShodanClient,
   args: { query: string }
 ): Promise<{ content: unknown[] }> {
-  const data = await client.request<unknown>('/shodan/search/stats', {
+  // Current Shodan API: /shodan/host/count returns the total match count for a query.
+  const data = await client.request<unknown>('/shodan/host/count', {
     query: args.query.replace(/\s+/g, '|'),
   });
   return {

@@ -111,7 +111,8 @@ export async function domainLookup(
   client: ShodanClient,
   args: { domain: string }
 ): Promise<{ content: unknown[] }> {
-  const data = await client.request<unknown>(`/shodan/domain/${encodeURIComponent(args.domain)}/data`);
+  // Current Shodan API: domain intelligence moved to /dns/domain/<domain>.
+  const data = await client.request<unknown>(`/dns/domain/${encodeURIComponent(args.domain)}`);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };
@@ -121,7 +122,8 @@ export async function ispLookup(
   client: ShodanClient,
   args: { asn: string }
 ): Promise<{ content: unknown[] }> {
-  const asnFormatted = args.asn.toUpperCase().replace(/^AS/, 'AS');
+  // Normalize to the canonical AS-prefixed form (accept "15169" or "AS15169").
+  const asnFormatted = `AS${args.asn.toUpperCase().replace(/^AS/, '')}`;
   const data = await client.request<unknown>(`/org/${asnFormatted}/json`);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],

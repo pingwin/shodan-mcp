@@ -64,9 +64,9 @@ export async function hostBatchLookup(
   client: ShodanClient,
   args: { ips: string[] }
 ): Promise<{ content: unknown[] }> {
-  const data = await client.request<unknown>('/shodan/host/', {
-    ip: args.ips.join(','),
-  });
+  // Current Shodan API: batch host lookup is GET /shodan/host/<ip1,ip2,...>.
+  // (Requires a paid tier; free plans get a 403 "Corporate or Enterprise account needed".)
+  const data = await client.request<unknown>(`/shodan/host/${args.ips.join(',')}`);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };

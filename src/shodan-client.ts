@@ -52,34 +52,6 @@ export class ShodanClient {
     return response.json() as Promise<T>;
   }
 
-  private async postRequest<T>(endpoint: string, data: unknown): Promise<T> {
-    const url = new URL(`${API_BASE_URL}${endpoint}`);
-    url.searchParams.append('key', this.apiKey);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'User-Agent': this.userAgent,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      let errorMessage = `Shodan API error: ${response.status} ${response.statusText}`;
-      try {
-        const errorData = await response.json() as { error?: string };
-        errorMessage = errorData.error || errorMessage;
-      } catch {
-        // Use default error message
-      }
-      throw new Error(errorMessage);
-    }
-
-    return response.json() as Promise<T>;
-  }
-
   // Host endpoint methods
 
   /**
@@ -93,7 +65,7 @@ export class ShodanClient {
    * Get detailed information about multiple hosts (up to 100)
    */
   async hostBatchLookup(hosts: string[]): Promise<BatchHostData> {
-    return this.postRequest('/shodan/host/batch/json', hosts);
+    return this.request(`/shodan/host/${hosts.join(',')}`);
   }
 
   // Search endpoint methods
@@ -102,10 +74,10 @@ export class ShodanClient {
    * Search for hosts matching a query
    */
   async search(query: string, page = 1, pageSize = 1000): Promise<SearchResults> {
-    return this.request('/shodan/search', {
+    return this.request('/shodan/host/search', {
       query: query.replace(/\s+/g, '|'), // Shodan requires OR format
-      page: page,
       limit: pageSize,
+      offset: (page - 1) * pageSize,
     });
   }
 
@@ -117,7 +89,7 @@ export class ShodanClient {
     if (facets && facets.length > 0) {
       params.facets = facets.join('|');
     }
-    return this.request('/shodan/stats', params);
+    return this.request('/shodan/host/count', params);
   }
 
   // Organization endpoint methods
@@ -140,7 +112,7 @@ export class ShodanClient {
    * Get domain intelligence
    */
   async domainLookup(domain: string): Promise<DomainData> {
-    return this.request(`/shodan/domain/${domain}/data`);
+    return this.request(`/dns/domain/${domain}`);
   }
 
   /**

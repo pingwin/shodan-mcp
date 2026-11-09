@@ -41,7 +41,8 @@ export const HOST_BATCH_LOOKUP_TOOL: Tool = {
 Useful for scanning multiple hosts efficiently. Returns a dictionary where
 each key is an IP address and the value is either host data or an error/not found.
 
-Maximum 100 IPs per request for optimal performance.`,
+Maximum 100 IPs per request. Note: batch lookup requires a Shodan Corporate
+or Enterprise plan; on lower plans Shodan returns a 403 explaining this.`,
   inputSchema: z.object({
     ips: z.array(z.string().ip())
       .max(100)
@@ -54,7 +55,7 @@ export async function hostLookup(
   client: ShodanClient,
   args: { ip: string }
 ): Promise<{ content: unknown[] }> {
-  const data = await client.request<unknown>('/shodan/host/' + args.ip);
+  const data = await client.hostLookup(args.ip);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };
@@ -64,9 +65,7 @@ export async function hostBatchLookup(
   client: ShodanClient,
   args: { ips: string[] }
 ): Promise<{ content: unknown[] }> {
-  // Current Shodan API: batch host lookup is GET /shodan/host/<ip1,ip2,...>.
-  // (Requires a paid tier; free plans get a 403 "Corporate or Enterprise account needed".)
-  const data = await client.request<unknown>(`/shodan/host/${args.ips.join(',')}`);
+  const data = await client.hostBatchLookup(args.ips);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };

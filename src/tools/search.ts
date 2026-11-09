@@ -37,7 +37,8 @@ Query operators:
 - vuln:CVE - vulnerability ID
 - version:X - version number
 
-Returns up to 1000 matches by default.`,
+The query string is passed to Shodan verbatim (spaces are AND, use | for OR).
+Returns up to 'limit' matches (default 100) plus the total match count.`,
   inputSchema: z.object({
     query: z.string()
       .min(1)
@@ -74,13 +75,7 @@ export async function shodanSearch(
   client: ShodanClient,
   args: { query: string; limit: number; page: number }
 ): Promise<{ content: unknown[] }> {
-  // Current Shodan API: /shodan/host/search. Pagination is either `page` OR
-  // `offset`+`limit` (never both), so we derive offset from the requested page.
-  const data = await client.request<unknown>('/shodan/host/search', {
-    query: args.query.replace(/\s+/g, '|'),
-    limit: args.limit,
-    offset: (args.page - 1) * args.limit,
-  });
+  const data = await client.search(args.query, args.page, args.limit);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };
@@ -90,10 +85,7 @@ export async function searchStats(
   client: ShodanClient,
   args: { query: string }
 ): Promise<{ content: unknown[] }> {
-  // Current Shodan API: /shodan/host/count returns the total match count for a query.
-  const data = await client.request<unknown>('/shodan/host/count', {
-    query: args.query.replace(/\s+/g, '|'),
-  });
+  const data = await client.searchStats(args.query);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };

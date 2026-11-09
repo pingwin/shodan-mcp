@@ -42,13 +42,11 @@ export const CPE_LOOKUP_TOOL: Tool = {
 CPE is a standardized naming scheme for information technology systems,
 components, and applications.
 
-Returns details about a CPE including:
-- CPE identifiers (v2.2, v2.3, URI format)
-- Vendor, product, and version
-- All versions and updates available
-- Update count and version count
+Provide a CPE identifier; the product is extracted from it and all matching
+CPE entries (across versions) are returned from Shodan's CPE database.
 
-Example CPE format: 'cpe:/a:apache:http_server' or 'cpe:2.3:a:apache:http_server:2.4.0'`,
+Example CPE formats: 'cpe:/a:apache:http_server' or
+'cpe:2.3:a:apache:http_server:2.4.0'.`,
   inputSchema: z.object({
     cpeId: z.string()
       .min(1)
@@ -58,40 +56,41 @@ Example CPE format: 'cpe:/a:apache:http_server' or 'cpe:2.3:a:apache:http_server
 
 export const CVES_BY_CPE_TOOL: Tool = {
   name: 'cves_by_cpe',
-  description: `Find all CVEs affecting a specific CPE product.
+  description: `Find all CVEs affecting a vendor's product(s).
 
-Returns a list of all known vulnerabilities for a given vendor and product.
+Returns a list of vulnerabilities (with CVSS, EPSS, KEV status, affected
+versions, references, etc.) for a given vendor, optionally narrowed to one
+product.
 
-This is useful for vulnerability assessment and determining what CVEs
-affect specific software products.
-
-Example: Find all CVEs for Apache HTTP Server (vendor: 'apache', product: 'http_server').`,
+Example: Find all CVEs for Apache HTTP Server (vendor 'apache',
+product 'http_server').`,
   inputSchema: z.object({
     vendor: z.string()
       .min(1)
       .describe('Vendor name (e.g., "apache", "microsoft", "cisco")'),
     product: z.string()
       .optional()
-      .describe('Product name (optional, defaults to all products from vendor)'),
+      .describe('Product name (optional; when omitted, returns CVEs for all of the vendor\'s products)'),
   }),
 };
 
 export const PRODUCT_SEARCH_TOOL: Tool = {
   name: 'product_search',
-  description: `Search for products in the CPE database.
+  description: `Search for products in Shodan's CPE database.
 
-Search for software products by name or vendor. Returns matching CPEs
-with their vendor, product, and version information.
+Searches by product name (substring match) and returns matching CPE
+identifiers across versions. Useful for finding the correct CPE identifier
+for a product.
 
-Useful for finding the correct CPE identifier for a product or
-discovering products from a specific vendor.`,
+Note: results are matched on the product term; an optional vendor is accepted
+but not used to filter server-side.`,
   inputSchema: z.object({
     query: z.string()
       .min(1)
-      .describe('Search query for product name'),
+      .describe('Product name or substring to search for (e.g., "http_server", "libpng")'),
     vendor: z.string()
       .optional()
-      .describe('Optional vendor filter (e.g., "apache", "microsoft")'),
+      .describe('Optional vendor filter (accepted for intent; not used to filter server-side)'),
     limit: z.number()
       .min(1)
       .max(100)
@@ -108,7 +107,7 @@ export async function cveLookup(
   client: ShodanClient,
   args: { cveId: string }
 ): Promise<{ content: unknown[] }> {
-  const data = await client.request<unknown>(`/shodan/cve/${args.cveId}`);
+  const data = await client.cveLookup(args.cveId);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };
@@ -118,9 +117,7 @@ export async function cpeLookup(
   client: ShodanClient,
   args: { cpeId: string }
 ): Promise<{ content: unknown[] }> {
-  const data = await client.request<unknown>(
-    `/shodan/cpe/${encodeURIComponent(args.cpeId)}`
-  );
+  const data = await client.cpeLookup(args.cpeId);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };
@@ -130,13 +127,7 @@ export async function cvesByCpe(
   client: ShodanClient,
   args: { vendor: string; product?: string }
 ): Promise<{ content: unknown[] }> {
-  const cpeString = args.product
-    ? `cpe:2.3:a:${args.vendor}:${args.product}`
-    : `cpe:2.3:a:${args.vendor}`;
-
-  const data = await client.request<unknown>('/shodan/cve/cpe', {
-    cpe: cpeString,
-  });
+  const data = await client.cvesByCpe(args.vendor, args.product);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };
@@ -146,16 +137,7 @@ export async function productSearch(
   client: ShodanClient,
   args: { query: string; vendor?: string; limit: number; page: number }
 ): Promise<{ content: unknown[] }> {
-  const params: Record<string, string | number> = {
-    query: args.query.replace(/\s+/g, '|'),
-    limit: args.limit,
-    page: args.page,
-  };
-  if (args.vendor) {
-    params.vendor = args.vendor;
-  }
-
-  const data = await client.request<unknown>('/shodan/cpe/search', params);
+  const data = await client.productSearch(args.query, args.vendor, args.page, args.limit);
   return {
     content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
   };
